@@ -19,7 +19,9 @@ DROP VIEW IF EXISTS q4v;
 -- Question 0
 CREATE VIEW q0(era)
 AS
-  SELECT 1 -- replace this line
+  SELECT MAX(era)
+  FROM pitching
+  -- replace this line
 ;
 
 -- Question 1i
