@@ -3,7 +3,7 @@ import os
 import shutil
 import argparse
 import subprocess
- 
+
 has_alternate_solutions = {'q2iii'}
 sqlite = "sqlite3"
 defaultdb = "lahman.db"
