@@ -21,49 +21,73 @@ CREATE VIEW q0(era)
 AS
   SELECT MAX(ERA) As era
   FROM pitching
-  -- replace this line
 ;
 
 -- Question 1i
 CREATE VIEW q1i(namefirst, namelast, birthyear)
 AS
-  SELECT 1, 1, 1 -- replace this line
+  SELECT namefirst, namelast, birthyear
+  FROM people
+  WHERE weight > 300;
 ;
 
 -- Question 1ii
 CREATE VIEW q1ii(namefirst, namelast, birthyear)
 AS
-  SELECT 1, 1, 1 -- replace this line
+  SELECT namefirst, namelast, birthyear
+  FROM people
+  WHERE namefirst LIKE '% %'
+  ORDER BY namefirst, namelast;
 ;
 
 -- Question 1iii
 CREATE VIEW q1iii(birthyear, avgheight, count)
 AS
-  SELECT 1, 1, 1 -- replace this line
+  SELECT birthyear, AVG(height) AS avgheight, COUNT(*) AS count
+  FROM people
+  GROUP BY birthyear
+  ORDER BY birthyear;
 ;
 
 -- Question 1iv
 CREATE VIEW q1iv(birthyear, avgheight, count)
 AS
-  SELECT 1, 1, 1 -- replace this line
+  SELECT birthyear, avgheight, count
+  FROM q1iii
+  WHERE avgheight > 70
+  ORDER BY birthyear;
 ;
 
 -- Question 2i
 CREATE VIEW q2i(namefirst, namelast, playerid, yearid)
 AS
-  SELECT 1, 1, 1, 1 -- replace this line
+  SELECT p.namefirst, p.namelast, p.playerid, h.yearid
+  FROM halloffame h JOIN people p ON h.playerID = p.playerID
+  WHERE h.inducted = 'Y'
+  ORDER BY h.yearid DESC, p.playerID;
 ;
 
 -- Question 2ii
 CREATE VIEW q2ii(namefirst, namelast, playerid, schoolid, yearid)
 AS
-  SELECT 1, 1, 1, 1, 1 -- replace this line
+  SELECT p.namefirst, p.namelast, p.playerID, cp.schoolID, h.yearid
+  FROM halloffame h
+      JOIN people p ON h.playerID = p.playerID
+      JOIN collegeplaying cp ON p.playerID = cp.playerID
+      JOIN schools s ON cp.schoolID = s.schoolID
+  WHERE h.inducted = 'Y' AND s.state = 'CA'
+  ORDER BY h.yearid DESC, cp.schoolID, p.playerID;
 ;
 
 -- Question 2iii
 CREATE VIEW q2iii(playerid, namefirst, namelast, schoolid)
 AS
-  SELECT 1, 1, 1, 1 -- replace this line
+  SELECT p.playerID, p.namefirst, p.namelast, cp.schoolID
+  FROM halloffame h
+      JOIN people p ON h.playerID = p.playerID
+      LEFT JOIN collegeplaying cp ON p.playerID = cp.playerID
+  WHERE h.inducted = 'Y'
+  ORDER BY p.playerID DESC, cp.schoolID;
 ;
 
 -- Question 3i
