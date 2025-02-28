@@ -278,10 +278,8 @@ AS
 
 -- Question 4v
 CREATE VIEW q4v(team, diffAvg) AS
-  SELECT a.teamid, ROUND(MAX(COALESCE(s.salary, 0)) - MIN(COALESCE(s.salary, 0)), 4) AS diffAvg
-  FROM allstarfull a JOIN salaries s ON a.playerID = s.playerID
-  WHERE s.yearID = 2016
+  SELECT a.teamid, MAX(s.salary) - MIN(s.salary) AS diffAvg
+  FROM allstarfull a JOIN salaries s ON a.playerID = s.playerID AND a.yearID = 2016 AND s.yearID = 2016
   GROUP BY a.teamid
-  HAVING COUNT(*) > 0;
 ;
 

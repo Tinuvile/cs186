@@ -601,3 +601,35 @@ AS
 team in the year 2016, give the `teamid` and `diffAvg` (the difference 
 between the team's highest paid all-star's salary and the team's lowest 
 paid all-star's salary).
+
+```sql
+CREATE VIEW q4v(team, diffAvg) AS
+  SELECT a.teamid, MAX(s.salary) - MIN(s.salary) AS diffAvg
+  FROM allstarfull a JOIN salaries s ON a.playerID = s.playerID AND a.yearID = 2016 AND s.yearID = 2016
+  GROUP BY a.teamid
+;
+```
+
+完结😊
+
+```commandline
+(base) PS F:\cs186\sp25-proj1> python test.py
+PASS q0
+PASS q1i
+PASS q1ii
+PASS q1iii
+PASS q1iv
+PASS q2i
+PASS q2ii
+PASS q2iii
+PASS q3i
+PASS q3ii
+PASS q3iii
+PASS q4i
+PASS q4ii_bins_0_to_8
+PASS q4ii_bin_9
+PASS q4iii
+PASS q4iv
+PASS q4v
+SUCCESS: Your queries passed tests on this dataset
+```
