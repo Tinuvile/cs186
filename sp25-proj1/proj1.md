@@ -86,36 +86,15 @@ AS
 ;
 ```
 
-但是按照教程中使用`python3 test.py -q 0`命令无输出
+按照教程中使用`python test.py -q 0`命令通过
 
 ```commandline
-(base) PS F:\cs186\sp25-proj1> python test.py
+(base) PS F:\cs186\sp25-proj1> python test.py -q 0 
 PASS q0
-FAIL q1i see diffs/q1i.txt
-FAIL q1ii see diffs/q1ii.txt
-FAIL q1iii see diffs/q1iii.txt
-FAIL q1iv see diffs/q1iv.txt
-FAIL q2i see diffs/q2i.txt
-FAIL q2ii see diffs/q2ii.txt
-FAIL q2iii see diffs/q2iii.txt
-FAIL q3i see diffs/q3i.txt
-FAIL q3ii see diffs/q3ii.txt
-FAIL q3iii see diffs/q3iii.txt
-FAIL q4i see diffs/q4i.txt
-FAIL q4ii_bins_0_to_8 see diffs/q4ii_bins_0_to_8.txt
-FAIL q4ii_bin_9 see diffs/q4ii_bin_9.txt
-FAIL q4iii see diffs/q4iii.txt
-FAIL q4iv see diffs/q4iv.txt
-FAIL q4v see diffs/q4v.txt
-(base) PS F:\cs186\sp25-proj1> python3 test.py -q 0
-(base) PS F:\cs186\sp25-proj1>
+SUCCESS: Your queries passed tests on this dataset
 ```
 
-经检查`/your_output/q0.txt`中的输出正确，此错误应该是`test.py`的设计问题。
-
-另外，我在修改了`q1i`的代码之后运行仍然`FAIL`，但是观察`expected_output`与`your_output`
-中的文件已经完全一致，重新开启终端后运行命令通过`PASS`，暂时未知是什么原因，可能与数据库连接未
-正确关闭或者视图定义未更新有关。
+检查`/your_output/q0.txt`中的输出也同样正确。
 
 ## Task1:Basics
 
