@@ -123,3 +123,31 @@ public Optional<RecordId> get(DataBox key) {
 ```
 
 ### 2. `getLeftmostLeaf`函数
+
+跟上面的思路其实差不多，先实现`LeafNode`里的：
+
+```java
+public LeafNode getLeftmostLeaf() {
+        return this;
+    }
+```
+
+因为`n.getLeftmostLeaf`要求是返回以`n`为根节点的子树的最左节点，叶节点在最底层直接返回自己即可。测试通过：
+
+![img_2.png](../image/img_2.png)
+
+然后来写`InnerNode`的，很简单：
+
+```java
+public LeafNode getLeftmostLeaf() {
+        assert(children.size() > 0);
+        BPlusNode child = getChild(0);
+        return child.getLeftmostLeaf();
+    }
+```
+
+运行测试通过：
+
+![img_3.png](../image/img_3.png)
+
+### 3. `put`函数
