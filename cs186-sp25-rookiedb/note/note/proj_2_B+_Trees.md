@@ -63,7 +63,7 @@ public static LeafNode fromBytes(BPlusTreeMetadata metadata, BufferManager buffe
 > 
 > Do not forget to call `sync()` when implementing the two mutating methods (`put` and `remove`); it's easy to forget.
 
-根据任务描述，一个`get`得到具体数据的过程被拆分到了三个代码部分，查看[`BPlusNode.java`](https://github.com/Tinuvile/cs186/blob/3e9c7a750ef38d31233bc5fe2d388892f5a101db/cs186-sp25-rookiedb/src/main/java/edu/berkeley/cs186/database/index/BPlusNode.java#L19)可以整理出各部分的功能：
+### 1. `get`函数
 
 - `BPlusTree`为`get`的入口层，负责控制整体流程。首先从根节点开始导航，经过递归查找到叶子节点，并查找实际的键值；
 
@@ -107,4 +107,19 @@ public LeafNode get(DataBox key) {
 
 ![img_1.png](../image/img_1.png)
 
-再去写`BPlusTree`中的`get`方法
+再去写`BPlusTree`中的`get`方法：
+
+```java
+public Optional<RecordId> get(DataBox key) {
+        typecheck(key);
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): implement
+        LeafNode leaf = root.get(key);
+
+        return leaf.getKey(key);
+    }
+```
+
+### 2. `getLeftmostLeaf`函数
