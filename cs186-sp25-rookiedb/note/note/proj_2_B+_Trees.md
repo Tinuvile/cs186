@@ -151,3 +151,158 @@ public LeafNode getLeftmostLeaf() {
 ![img_3.png](../image/img_3.png)
 
 ### 3. `put`函数
+
+整体思路大致如下：
+
+```mermaid
+sequenceDiagram
+    participant BPlusTree
+    participant LeafNode
+    participant InnerNode
+
+    BPlusTree->>LeafNode: put(key, rid)
+    activate LeafNode
+    LeafNode-->>BPlusTree: Optional(splitKey, newLeaf)
+    deactivate LeafNode
+
+    loop 分裂传播
+        BPlusTree->>InnerNode: put(splitKey, newLeaf)
+        activate InnerNode
+        InnerNode-->>BPlusTree: Optional(splitKey, newInner)
+        deactivate InnerNode
+    end
+
+    alt 根节点分裂
+        BPlusTree->>BPlusTree: 创建新根节点
+    end
+```
+
+首先写`LeafNode`中的`put`函数，这个函数需要检查是否有重复键，并将其插入到正确位置，如果出现溢出，再分裂叶子节点，并返回中间键和新节点的指针。具体实现如下：
+
+```java
+public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
+        // TODO(proj2): implement
+
+        // 检查重复键
+        if (keys.contains(key)) {
+            throw new BPlusTreeException("Leaf already has the key");
+        }
+
+        // 利用numLessThan函数寻找插入位置并执行
+        int index = InnerNode.numLessThan(key, keys);
+        keys.add(index, key);
+        rids.add(index, rid);
+
+        // 最大键数
+        int maxKeys = 2 * metadata.getOrder();
+
+        // 如果没有溢出
+        if (keys.size() <= maxKeys) {
+            sync();
+            return Optional.empty();
+        }
+
+        // 溢出情况
+        // 获取中间键
+        int splitIndex = maxKeys / 2;
+        DataBox splitKey = keys.get(splitIndex);
+
+        // 创建新的叶子节点
+        List<DataBox> rightKeys = new ArrayList<>(keys.subList(splitIndex, keys.size()));
+        List<RecordId> rightRids = new ArrayList<>(rids.subList(splitIndex, rids.size()));
+        LeafNode rightSibling = new LeafNode(metadata, bufferManager, rightKeys, rightRids, this.rightSibling, treeContext);
+
+        // 更新旧的叶子节点
+        keys = new ArrayList<>(keys.subList(0, splitIndex));
+        rids = new ArrayList<>(rids.subList(0, splitIndex));
+        this.rightSibling = Optional.of(rightSibling.getPage().getPageNum());
+        sync();
+
+        return Optional.of(new Pair<>(splitKey, rightSibling.getPage().getPageNum()));
+    }
+```
+
+运行测试验证（共三个测试）：
+
+![img_4.png](../image/img_4.png)
+
+![img_5.png](../image/img_5.png)
+
+![img_6.png](../image/img_6.png)
+
+均通过🥰🥰🥰。
+
+然后来写`InnerNode`部分，按照思路设计，内部节点需要分裂时循环调用的逻辑放在`BPlusTree`中实现，在这部分中我们只实现一次的情况即可。
+
+```java
+public Optional<Pair<DataBox, Long>> put(DataBox key, RecordId rid) {
+    // 找到合适的子节点索引
+    int index = InnerNode.numLessThanEqual(key, keys);
+    BPlusNode child = getChild(index);
+
+    // 递归插入到子节点
+    Optional<Pair<DataBox, Long>> result = child.put(key, rid);
+
+    if (result.isPresent()) {
+        // 子节点分裂，插入中间键和新节点指针
+        Pair<DataBox, Long> splitResult = result.get();
+        keys.add(index, splitResult.getFirst());
+        children.add(index + 1, splitResult.getSecond());
+
+        // 检查当前节点是否溢出
+        if (keys.size() > 2 * metadata.getOrder()) {
+            // 分裂当前节点
+            int mid = metadata.getOrder();
+            DataBox splitKey = keys.get(mid);
+
+            // 创建新节点
+            List<DataBox> rightKeys = keys.subList(mid + 1, keys.size());
+            List<Long> rightChildren = children.subList(mid + 1, children.size());
+            InnerNode right = new InnerNode(metadata, bufferManager, rightKeys, rightChildren, treeContext);
+
+            // 更新当前节点
+            keys = keys.subList(0, mid);
+            children = children.subList(0, mid + 1);
+            sync();
+
+            return Optional.of(new Pair<>(splitKey, right.getPage().getPageNum()));
+        }
+        sync();
+    }
+    return Optional.empty();
+}
+```
+
+运行测试通过：
+
+![img_7.png](../image/img_7.png)
+
+最后写`BPlusTree`的`put`部分，其中处理根节点分裂的逻辑：
+
+```java
+public void put(DataBox key, RecordId rid) {
+        typecheck(key);
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): implement
+        // Note: You should NOT update the root variable directly.
+        // Use the provided updateRoot() helper method to change
+        // the tree's root if the old root splits.
+        Optional<Pair<DataBox, Long>> result = root.put(key, rid);
+
+        if (result.isPresent()) {
+            List<DataBox> keys = new ArrayList<>();
+            keys.add(result.get().getFirst());
+
+            List<Long> children = new ArrayList<>();
+            children.add(root.getPage().getPageNum());
+            children.add(result.get().getSecond());
+
+            InnerNode newRoot = new InnerNode(metadata, bufferManager, keys, children, lockContext);
+            updateRoot(newRoot);
+        }
+    }
+```
+
+### `remove`函数
