@@ -200,9 +200,15 @@ class LeafNode extends BPlusNode {
     // See BPlusNode.remove.
     @Override
     public void remove(DataBox key) {
-        // TODO(proj2): implement
+        int index = Collections.binarySearch(keys, key);
+        if (index == -1) {
+            throw new BPlusTreeException("Leaf does not have the key");
+        }
 
-        return;
+        keys.remove(index);
+        rids.remove(index);
+
+        sync();
     }
 
     // Iterators ///////////////////////////////////////////////////////////////

@@ -305,4 +305,84 @@ public void put(DataBox key, RecordId rid) {
     }
 ```
 
+但由于`scanAll`函数尚未完成，无法通过`testRandomPuts()`测试。
+
 ### `remove`函数
+
+依然是先写`LeafNode`部分，比较简单：
+
+```java
+public void remove(DataBox key) {
+        // TODO(proj2): implement
+        int index = keys.indexOf(key);
+        if (index == -1) {
+            throw new BPlusTreeException("Leaf does not have the key");
+        }
+
+        keys.remove(index);
+        rids.remove(index);
+    }
+```
+
+![img_8.png](../image/img_8.png)
+
+但我在写`InnerNode`部分遇到问题，测试一直失败，应该是没有`sync`的问题，修改`LeafNode`代码：
+
+```java
+public void remove(DataBox key) {
+        int index = Collections.binarySearch(keys, key);
+        if (index == -1) {
+            throw new BPlusTreeException("Leaf does not have the key");
+        }
+
+        keys.remove(index);
+        rids.remove(index);
+
+        sync();
+    }
+```
+
+再写`InnerNode`部分代码：
+
+```java
+public void remove(DataBox key) {
+        // TODO(proj2): implement
+        int index = InnerNode.numLessThanEqual(key, keys);
+        BPlusNode child = getChild(index);
+        child.remove(key);
+        sync();
+    }
+```
+
+测试通过
+
+![img_9.png](../image/img_9.png)
+
+再完成`BPlusTree`的`remove`部分：
+
+```java
+public void remove(DataBox key) {
+        typecheck(key);
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): implement
+        root.remove(key);
+    }
+```
+
+那么**Task2**就完成了。
+
+## Task 3: Scans
+
+> You will need to implement the following methods in `BPlusTree`:
+> 
+> - `scanAll`
+> 
+> - `scanGreaterEqual`
+> 
+> In order to implement these, you will have to complete the [`BPlusTreeIterator`](https://github.com/berkeley-cs186/sp25-rookiedb/blob/master/src/main/java/edu/berkeley/cs186/database/index/BPlusTree.java#L422) inner class in `BPlusTree.java`to complete these two methods.
+> 
+> After completing this task, you should be passing `TestBPlusTree::testRandomPuts`
+> 
+> Your implementation **does not** have to account for the tree being modified during a scan. For the time being you can think of this as there being a lock that prevents scanning and mutation from overlapping, and that the behavior of iterators created before a modification is undefined (you can handle any problems with these iterators however you like, or not at all).

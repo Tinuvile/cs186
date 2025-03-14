@@ -1,6 +1,9 @@
 autoDetectedPackages:
 - edu.berkeley.cs186.database
 enableAutoDetect: true
+entryDisplayConfig:
+  excludedPathPatterns: []
+  skipJsCss: true
 funcDisplayConfig:
   skipConstructors: false
   skipFieldAccess: true
