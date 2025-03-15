@@ -386,3 +386,146 @@ public void remove(DataBox key) {
 > After completing this task, you should be passing `TestBPlusTree::testRandomPuts`
 > 
 > Your implementation **does not** have to account for the tree being modified during a scan. For the time being you can think of this as there being a lock that prevents scanning and mutation from overlapping, and that the behavior of iterators created before a modification is undefined (you can handle any problems with these iterators however you like, or not at all).
+
+首先看`scanAll`和`scanGreaterEqual`的注释提示，大致的调用关系如下：
+
+```mermaid
+sequenceDiagram
+    participant scanAll
+    participant scanGreaterEqual
+    participant BPlusTreeIterator
+
+    scanAll->>BPlusTreeIterator: new(root.getLeftmostLeaf())
+    scanGreaterEqual->>BPlusTreeIterator: new(root.get(key))
+    BPlusTreeIterator->>LeafNode: 通过rightSibling遍历
+    LeafNode-->>BPlusTreeIterator: 返回下个RecordId
+```
+
+直接写迭代器：
+
+```java
+private class BPlusTreeIterator implements Iterator<RecordId> {
+        // TODO(proj2): Add whatever fields and constructors you want here.
+        private LeafNode currentLeafNode;
+        private int currentIndex;
+
+        public BPlusTreeIterator(LeafNode startLeafNode, int startIndex) {
+            this.currentLeafNode = startLeafNode;
+            this.currentIndex = startIndex;
+        }
+
+        @Override
+        public boolean hasNext() {
+            // TODO(proj2): implement
+            if (currentLeafNode == null) {
+                return false;
+            }
+            // 处理叶节点遍历完需要跨叶
+            if (currentIndex >= currentLeafNode.getKeys().size()) {
+                currentLeafNode = currentLeafNode.getRightSibling().orElse(null);
+                currentIndex = 0;
+            }
+            return currentLeafNode != null && currentIndex < currentLeafNode.getKeys().size();
+        }
+
+        @Override
+        public RecordId next() {
+            // TODO(proj2): implement
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
+
+            RecordId rid = currentLeafNode.getRids().get(currentIndex);
+            currentIndex++;
+
+            return rid;
+        }
+    }
+```
+
+回去写一下那两个函数，通过传入构造函数的参数不同来实现：
+
+首先是`scanAll`函数：
+
+```java
+public Iterator<RecordId> scanAll() {
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): Return a BPlusTreeIterator.
+        return new BPlusTreeIterator(root.getLeftmostLeaf(), 0);
+    }
+```
+
+然后是`scanGreaterEqual`函数：
+
+```java
+public Iterator<RecordId> scanGreaterEqual(DataBox key) {
+        typecheck(key);
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): Return a BPlusTreeIterator.
+        LeafNode startLeaf = root.get(key);
+        if (startLeaf == null) {
+            return Collections.emptyIterator();
+        }
+        int index = startLeaf.getKeys().indexOf(key);
+        return new BPlusTreeIterator(startLeaf, index);
+    }
+```
+
+运行之前没通过的测试：
+
+![img_10.png](../image/img_10.png)
+
+成功，**Task3**结束🤩！
+
+## Task 4: Bulk Load
+
+> Much like the methods from the Task 2 you'll need to implement `bulkLoad` within all three of `LeafNode`, `InnerNode`, and `BPlusTree`. Since bulk loading is a mutating operation you will need to call `sync()`. Be sure to read the instructions in [`BPluNode::bulkLoad`](https://github.com/berkeley-cs186/sp25-rookiedb/blob/master/src/main/java/edu/berkeley/cs186/database/index/BPlusNode.java#L162) carefully to ensure you split your nodes properly. We've provided a visualization of bulk loading for an order 2 tree with fill factor 0.75 ([powerpoint slides here](https://docs.google.com/presentation/d/1_ghdp60NV6XRHnutFAL20k2no6tr2PosXGokYtR8WwU/edit?usp=sharing)).
+> 
+> After this, you should pass all the Project 2 tests we have provided to you (and any you add yourselves)! These are all the provided tests in [`database.index.*`](https://github.com/berkeley-cs186/sp25-rookiedb/tree/master/src/test/java/edu/berkeley/cs186/database/index).
+
+先写`LeafNode`部分：这部分要注意的就是分裂时要保留maxSize，移出1个元素到新节点，其余部分跟`put`的实现有些类似：
+
+```java
+public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
+            float fillFactor) {
+        // TODO(proj2): implement
+        // 计算填充阈值，向上取整
+        int maxSize = (int)Math.ceil(2 * metadata.getOrder() * fillFactor);
+
+        while (data.hasNext() && keys.size() <= maxSize) {
+            Pair<DataBox, RecordId> entry = data.next();
+            keys.add(entry.getFirst());
+            rids.add(entry.getSecond());
+        }
+
+        if (!data.hasNext()) {
+            sync();
+            return Optional.empty();
+        }
+
+        // 分裂
+        List<DataBox> rightKeys = keys.subList(maxSize, keys.size());
+        List<RecordId> rightRids = rids.subList(maxSize, rids.size());
+
+        LeafNode rightNode = new LeafNode(metadata, bufferManager, rightKeys, rightRids, this.rightSibling, treeContext);
+
+        keys = new ArrayList<>(keys.subList(0, maxSize));
+        rids = new ArrayList<>(rids.subList(0, maxSize));
+        this.rightSibling = Optional.of(rightNode.getPage().getPageNum());
+        sync();
+
+        return Optional.of(new Pair<>(rightNode.getKeys().get(0), rightNode.getPage().getPageNum()));
+    }
+```
+
+测试：
+
+![img_11.png](../image/img_11.png)
+
+![img_12.png](../image/img_12.png)
+
+全部通过。

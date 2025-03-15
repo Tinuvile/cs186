@@ -145,7 +145,6 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         LeafNode leaf = root.get(key);
 
         return leaf.getKey(key);
@@ -202,9 +201,7 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        return new BPlusTreeIterator(root.getLeftmostLeaf(), 0);
     }
 
     /**
@@ -235,9 +232,12 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): Return a BPlusTreeIterator.
-
-        return Collections.emptyIterator();
+        LeafNode startLeaf = root.get(key);
+        if (startLeaf == null) {
+            return Collections.emptyIterator();
+        }
+        int index = startLeaf.getKeys().indexOf(key);
+        return new BPlusTreeIterator(startLeaf, index);
     }
 
     /**
@@ -281,7 +281,7 @@ public class BPlusTree {
      * be filled up to full and split in half exactly like in put.
      *
      * This method should raise an exception if the tree is not empty at time
-     * of bulk loading. Bulk loading is used when creating a new Index, so think 
+     * of bulk loading. Bulk loading is used when creating a new currentIndex, so think
      * about what an "empty" tree should look like. If data does not meet the 
      * preconditions (contains duplicates or not in order), the resulting 
      * behavior is undefined. Undefined behavior means you can handle these 
@@ -299,7 +299,6 @@ public class BPlusTree {
         // Note: You should NOT update the root variable directly.
         // Use the provided updateRoot() helper method to change
         // the tree's root if the old root splits.
-
         return;
     }
 
@@ -319,7 +318,6 @@ public class BPlusTree {
         // TODO(proj4_integration): Update the following line
         LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
 
-        // TODO(proj2): implement
         root.remove(key);
     }
 
@@ -432,20 +430,37 @@ public class BPlusTree {
 
     // Iterator ////////////////////////////////////////////////////////////////
     private class BPlusTreeIterator implements Iterator<RecordId> {
-        // TODO(proj2): Add whatever fields and constructors you want here.
+        private LeafNode currentLeafNode;
+        private int currentIndex;
+
+        public BPlusTreeIterator(LeafNode startLeafNode, int startIndex) {
+            this.currentLeafNode = startLeafNode;
+            this.currentIndex = startIndex;
+        }
 
         @Override
         public boolean hasNext() {
-            // TODO(proj2): implement
+            if (currentLeafNode == null) {
+                return false;
+            }
 
-            return false;
+            if (currentIndex >= currentLeafNode.getKeys().size()) {
+                currentLeafNode = currentLeafNode.getRightSibling().orElse(null);
+                currentIndex = 0;
+            }
+            return currentLeafNode != null && currentIndex < currentLeafNode.getKeys().size();
         }
 
         @Override
         public RecordId next() {
-            // TODO(proj2): implement
+            if (!hasNext()) {
+                throw new NoSuchElementException();
+            }
 
-            throw new NoSuchElementException();
+            RecordId rid = currentLeafNode.getRids().get(currentIndex);
+            currentIndex++;
+
+            return rid;
         }
     }
 }
