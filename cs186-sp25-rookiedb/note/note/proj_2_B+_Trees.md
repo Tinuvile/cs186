@@ -529,3 +529,108 @@ public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> 
 ![img_12.png](../image/img_12.png)
 
 全部通过。
+
+然后写`InnerNode`的部分，也很类似。
+
+```java
+public Optional<Pair<DataBox, Long>> bulkLoad(Iterator<Pair<DataBox, RecordId>> data,
+            float fillFactor) {
+        // TODO(proj2): implement
+        int maxSize = (int)Math.ceil(2 * metadata.getOrder());
+
+        while (data.hasNext() && keys.size() < maxSize) {
+            BPlusNode rightMostChild = getChild(children.size() - 1);
+            Optional<Pair<DataBox, Long>> result = rightMostChild.bulkLoad(data, fillFactor);
+
+            if (result.isPresent()) {
+                Pair<DataBox, Long> splitResult = result.get();
+                keys.add(splitResult.getFirst());
+                children.add(splitResult.getSecond());
+            }
+        }
+
+        if (!data.hasNext()) {
+            sync();
+            return Optional.empty();
+        }
+
+        int mid = metadata.getOrder();
+        DataBox splitKey = keys.get(mid);
+        List<DataBox> rightKeys = new ArrayList<>(keys.subList(mid + 1, keys.size()));
+        List<Long> rightChildren = children.subList(mid + 1, children.size());
+        InnerNode right = new InnerNode(metadata, bufferManager, rightKeys, rightChildren, treeContext);
+
+        keys = new ArrayList<>(keys.subList(0, mid + 1));
+        children = new ArrayList<>(children.subList(0, mid + 1));
+
+        sync();
+        return Optional.of(new Pair<>(splitKey, right.getPage().getPageNum()));
+    }
+```
+
+`BPlusTree`调用`InnerNode`的函数以及新建节点的思路基本与`put`一样。`put`写出来以后这个还是比较简单的：
+
+```java
+public void bulkLoad(Iterator<Pair<DataBox, RecordId>> data, float fillFactor) {
+        // TODO(proj4_integration): Update the following line
+        LockUtil.ensureSufficientLockHeld(lockContext, LockType.NL);
+
+        // TODO(proj2): implement
+        // Note: You should NOT update the root variable directly.
+        // Use the provided updateRoot() helper method to change
+        // the tree's root if the old root splits.
+        if (scanAll().hasNext()) {
+            throw new RuntimeException("Tree is not empty");
+        }
+
+        while (data.hasNext()) {
+            Optional<Pair<DataBox, Long>> result = root.bulkLoad(data, fillFactor);
+            if (result.isPresent()) {
+                Pair<DataBox, Long> pair = result.get();
+                List<DataBox> keys = new ArrayList<>();
+                List<Long> children = new ArrayList<>();
+                keys.add(pair.getFirst());
+                children.add(root.getPage().getPageNum());
+                children.add(pair.getSecond());
+                InnerNode newRoot = new InnerNode(metadata, bufferManager, keys, children, lockContext);
+                updateRoot(newRoot);
+            }
+        }
+        return;
+    }
+```
+
+测试通过：
+
+![img_13.png](../image/img_13.png)
+
+最后，按照教程运行`CommandLineInterface`代码启动**CLI**，这时候就可以使用数据库命令来调用我们刚写的代码了：
+
+```powershell
+"C:\Program Files\Java\jdk-22\bin\java.exe" "-javaagent:C:\Users\ASUS\AppData\Local\Programs\IntelliJ IDEA Ultimate 2024.3\lib\idea_rt.jar=61448" -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -classpath F:\cs186\cs186-sp25-rookiedb\target\classes edu.berkeley.cs186.database.cli.CommandLineInterface
+
+\|/  ___------___
+ \__|--o______o--|
+    |  berklee   |
+     ---______---
+
+Welcome to RookieDB (v1.8.6-fa24)
+=> SELECT * FROM Students AS s WHERE s.sid = 1;
+ sid | name              | major     | gpa
+-----+-------------------+-----------+-----------
+   1 | Augustina Mazzoni | Chemistry | 1.0054202
+(1 row)
+=> CREATE INDEX on Students(sid);
+CREATE INDEX ON Students (sid)
+=> exit
+exit
+Bye!
+
+进程已结束，退出代码为 0
+```
+
+一切顺利，那么到这里**Project2**就算彻底结束了，只不过遗憾的是没法上传到**Gradescope**上看看得分情况，希望后面运行的时候不要爆雷啊😰
+
+## 总结
+
+这次的作业关键还是在于熟悉项目结构，再结合一些**CS61B**的基础，难度适中，**Task2**可能需要更多的阅读代码理解各个函数的功能并调用。设计层面的内容也跟**CS61B**挺像的，不过写**CS61B**的项目时候一直有点晕晕的，还有点靠AI没有好好体会，这次也算是弥补一下。
